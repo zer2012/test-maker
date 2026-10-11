@@ -20,6 +20,9 @@ USER_TEMPLATE = """Write unit tests for the following {display} code.
 - Test framework: {framework}
 - {hint}
 - Cover normal cases, edge cases and error handling; assert on concrete values.
+- Write 8 to 20 focused test functions; each one checks a single behaviour with few assertions.
+- Test the public behaviour only: do not inspect private attributes or helpers (names starting with `_`).
+- Compare floating-point results with a tolerance, never with exact equality.
 - Do not modify or repeat the code under test.
 - Answer with a single ```{fence} code block containing the complete test code, nothing else.
 

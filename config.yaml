@@ -59,10 +59,11 @@ sandbox:
 filter:
   min_mutation_score: 0.34 # au moins 1 mutant sur 3 doit être détecté par les tests
   max_pruned_ratio: 0.3    # élagage : on retire au plus 30% des fonctions de test qui échouent
+  max_test_functions: 25   # build_sft écarte les fichiers plus longs : le student apprend à s'arrêter
 
 # Entraînement LoRA (train/train_lora.py, sur GPU loué). Batch effectif = batch_size x grad_accum = 16.
 sft:
-  epochs: 2
+  epochs: 1                # v1 : la 2e epoch n'améliorait plus la validation (et ~1 700 exemples en v2)
   lr: 2.0e-4
   warmup: 0.05             # part des pas en montée progressive du learning rate
   batch_size: 2            # 2 x 4096 tokens : les logits (vocabulaire de 152k) tiennent sur 24 Go
@@ -78,7 +79,7 @@ sft:
 # Pour générer sur un GPU RunPod (vLLM), remplacer base_url par l'URL du pod (voir evaluate.py).
 eval:
   temperature: 0           # réponse la plus probable : des scores reproductibles
-  max_tokens: 5120         # TestMaker écrit des fichiers longs : 3072 en coupait 7 sur 25 ; prompt + 5120 < 8192
+  max_tokens: 3072
   systems:
     base:                  # le student AVANT entraînement : mêmes poids Q8, mêmes réglages Ollama que TestMaker
       model: testmaker-base  # créé avec ../Modelfile.base (sinon contexte de 4096 tokens au lieu de 8192)
