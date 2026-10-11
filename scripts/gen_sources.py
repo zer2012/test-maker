@@ -6,6 +6,8 @@ Reprend là où il s'est arrêté : les variations déjà tentées sont sautées
 
 import argparse
 import ast
+import random
+import re
 import asyncio
 import sys
 from pathlib import Path
@@ -15,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from testmaker.common import append_jsonl, code_hash, extract_code, load_config, read_jsonl
 from testmaker.languages import LANGUAGES
 from testmaker.llm import teacher_llm
-from testmaker.prompts import DOMAINS, SYNTHETIC_EXTRA, SYNTHETIC_TEMPLATE
+from testmaker.prompts import DOMAINS, FEATURES, SHAPES, SYNTHETIC_EXTRA, SYNTHETIC_TEMPLATE
 
 
 def _python_issue(code: str, lang: str) -> str | None:
@@ -43,6 +45,16 @@ def _python_issue(code: str, lang: str) -> str | None:
     return None
 
 
+def _fingerprint(code: str) -> set[str]:
+    """Ensemble des mots du code (identifiants, mots-clés) : deux variantes d'un même module en partagent la plupart."""
+    return set(re.findall(r"[A-Za-z_]\w+", code))
+
+
+def _near_duplicate(fp: set[str], others: list[set[str]], threshold: float) -> bool:
+    """Vrai si un module déjà gardé partage plus de `threshold` de ses mots avec celui-ci (indice de Jaccard)."""
+    return any(len(fp & o) / len(fp | o) >= threshold for o in others if fp | o)
+
+
 async def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--lang", default="python", choices=list(LANGUAGES))
@@ -56,6 +68,7 @@ async def main() -> None:
     # Reprise : on évite les doublons de code et on ne redemande pas une variation déjà tentée.
     existing = read_jsonl(out)
     seen = {code_hash(r["code"]) for r in existing}
+    fingerprints = [_fingerprint(r["code"]) for r in existing]
     tried = {r["id"] for r in existing} | {r["id"] for r in read_jsonl(out + ".rejected")}
 
     todo = [f"synth-{args.lang}-{i:05d}" for i in range(args.n)]
@@ -65,12 +78,16 @@ async def main() -> None:
     async def one(rid: str) -> tuple[str, str]:
         """Demande un module au teacher ; le numéro de variation choisit le domaine."""
         i = int(rid.rsplit("-", 1)[1])
+        # Tirage reproductible (graine = numéro) d'une forme et d'une caractéristique, en plus du domaine.
+        rng = random.Random(i)
         prompt = SYNTHETIC_TEMPLATE.format(
             display=spec.display, domain=DOMAINS[i % len(DOMAINS)], seed=i,
+            shape=rng.choice(SHAPES), feature=rng.choice(FEATURES),
             extra=SYNTHETIC_EXTRA[args.lang], fence=spec.fence,
         )
         text = await llm.complete([{"role": "user", "content": prompt}],
-                                  temperature=0.9, max_tokens=cfg["teacher"]["max_tokens"])
+                                  temperature=cfg["teacher"]["sources_temperature"],
+                                  max_tokens=cfg["teacher"]["max_tokens"])
         return rid, text
 
     kept = 0
@@ -88,12 +105,14 @@ async def main() -> None:
         reason = _python_issue(code, args.lang) or (
             "pas autonome" if not spec.self_contained(code)
             else f"{n_lines} lignes" if not lo <= n_lines <= hi
-            else "doublon" if code_hash(code) in seen else None)
+            else "doublon" if code_hash(code) in seen
+            else "quasi-doublon" if _near_duplicate(_fingerprint(code), fingerprints, 0.6) else None)
         if reason:
             append_jsonl(out + ".rejected", {"id": rid, "reason": reason, "raw": text})
             print(f"  {rid} rejeté ({reason})")
             continue
         seen.add(code_hash(code))
+        fingerprints.append(_fingerprint(code))
         append_jsonl(out, {"id": rid, "lang": args.lang, "origin": "synthetic", "code": code})
         kept += 1
         print(f"  {rid} gardé ({n_lines} lignes)")

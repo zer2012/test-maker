@@ -35,7 +35,8 @@ teacher:
       # ou imposer un ordre : {provider: {order: ["A", "B"], allow_fallbacks: false}}
       extra_body: {}
   n_candidates: 2          # rejection sampling : on garde le meilleur candidat validé
-  temperature: 0.7
+  temperature: 0.7        # candidats de tests : assez de variété pour que les 2 candidats diffèrent
+  sources_temperature: 0.9 # invention des modules (étape 1) : plus de variété, un module raté est filtré
   max_tokens: 3072         # réponses tronquées = code inutilisable ; les modules Qwen3 font jusqu'à +-180 lignes
 
 student:
@@ -49,11 +50,11 @@ collect:
   max_lines: 250
 
 sandbox:
-  timeout_s: 60            # par variante (original ou mutant)
+  timeout_s: 20            # par variante (original ou mutant) ; un test Python normal prend < 2 s, au-delà c'est une boucle infinie
   n_mutants: 3
   memory: 1g
   cpus: 1
-  workers: 4               # conteneurs en parallèle
+  workers: 6               # conteneurs en parallèle (1 CPU chacun) ; ton i9 en a 16 logiques, Docker en voit 16
 
 filter:
   min_mutation_score: 0.34 # au moins 1 mutant sur 3 doit être détecté par les tests

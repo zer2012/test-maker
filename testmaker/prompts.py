@@ -47,11 +47,30 @@ def format_completion(lang: str, test_code: str) -> str:
 # Demande au teacher d'inventer un module à tester (étape 1, sources synthétiques).
 # `seed` rend chaque requête différente ; `extra` ajoute les contraintes propres au langage.
 SYNTHETIC_TEMPLATE = """Write a realistic, self-contained {display} module of 40 to 150 lines for this domain: {domain}.
-Invent a concrete task (variation #{seed}) with a few functions or a small class containing real logic:
-branches, loops, input validation and error cases.
+Invent a concrete, specific task (variation #{seed}). Shape: {shape}. It must also feature {feature}.
+Include real logic: branches, loops, input validation and error cases. Avoid the most obvious textbook example.
 Constraints: standard library only, no I/O, no network, no reading from stdin, no main entry point.
 {extra}
 Answer with a single ```{fence} code block and nothing else."""
+
+# Deux axes de plus, combinés au domaine (40 x 8 x 10 = 3 200 combinaisons) : sans eux, 500 modules
+# sur 40 domaines donnent ~12 variantes très proches par domaine (12 caches LRU...).
+SHAPES = [
+    "a small class with internal state and 4-6 methods",
+    "4-6 independent pure functions",
+    "a parser that turns text into structured data, plus helpers",
+    "a validator that raises custom error types with clear messages",
+    "a small data structure with insert, remove and query operations",
+    "an algorithm split into a main function and several helpers",
+    "two cooperating classes (e.g. a container and its items)",
+    "a calculator/engine applying configurable rules",
+]
+FEATURES = [
+    "custom error types", "recursion", "a fixed set of named constants or an enum",
+    "immutable value objects", "nested collections", "string building and formatting",
+    "sorting with custom keys", "guard clauses and early returns", "numeric edge cases (zero, negative, rounding)",
+    "optional parameters with defaults",
+]
 
 # Contraintes qui rendent le module compatible avec la disposition de fichiers de languages.py.
 SYNTHETIC_EXTRA = {
