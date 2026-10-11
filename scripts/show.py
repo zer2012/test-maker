@@ -30,6 +30,18 @@ def _status(val: dict | None) -> str:
     return f"best={val['best']} mutants {r['mutants_killed']}/{r['mutants_total']}"
 
 
+def _eval_verdict(r: dict) -> str:
+    """Verdict lisible d'une ligne de data/eval/<run>/results.jsonl."""
+    if r.get("error"):
+        return f"erreur : {r['error'][:80]}"
+    if not r.get("n_tests_raw"):
+        return "pas de code (réponse coupée ou sans bloc de code)"
+    if not r["passed"]:
+        return f"échoue ({r['n_tests_raw']} fonctions de test)"
+    status = "passe tel quel" if r["raw_passed"] else f"passe après élagage ({r['pruned']} retirée(s))"
+    return f"{status}, mutants {r['mutants_killed']}/{r['mutants_total']}"
+
+
 def main() -> None:
     cfg = load_config()
     p = cfg["paths"]
@@ -67,6 +79,24 @@ def main() -> None:
             if v and not v["results"][i]["passed"]:
                 md += ["<details><summary>log</summary>", "", "```", v["results"][i]["log"], "```",
                        "", "</details>", ""]
+
+    # Tests écrits par les modèles évalués (scripts/evaluate.py), pour chaque run de data/eval/.
+    for results in sorted((Path(p["sources"]).parent / "eval").glob("*/results.jsonl")):
+        for r in read_jsonl(results):
+            if r["id"] != rid:
+                continue
+            md += [f"## Évaluation {results.parent.name} — {r['system']} ({r['model']})", "",
+                   f"**{_eval_verdict(r)}** · génération {r['gen_s']} s", ""]
+            if r.get("n_tests_raw"):
+                md += [f"```{fence}", r.get("final_test") or r["test"], "```", ""]
+                if r.get("pruned"):
+                    md += ["<details><summary>version brute, avant élagage</summary>", "",
+                           f"```{fence}", r["test"], "```", "", "</details>", ""]
+            else:
+                md += ["<details><summary>réponse brute (sans bloc de code complet)</summary>", "",
+                       "```", r["test"], "```", "", "</details>", ""]
+            if r.get("log"):
+                md += ["<details><summary>log pytest</summary>", "", "```", r["log"], "```", "", "</details>", ""]
 
     out = Path(p["sources"]).parent / "view" / f"{rid}.md"
     out.parent.mkdir(parents=True, exist_ok=True)

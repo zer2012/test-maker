@@ -50,3 +50,6 @@ comme à la validation (sandbox, mutants, élagage). Systèmes définis dans `co
 .venv/bin/python scripts/try_model.py 3                  # un module, un modèle, résultat détaillé
 .venv/bin/python scripts/evaluate.py                     # comparaison complète -> data/eval/v1/report.md
 ```
+
+## Historique
+Résultats de chaque version entraînée (données, réglages, évaluation) : [history/](history/).

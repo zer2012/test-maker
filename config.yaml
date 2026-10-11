@@ -78,10 +78,10 @@ sft:
 # Pour générer sur un GPU RunPod (vLLM), remplacer base_url par l'URL du pod (voir evaluate.py).
 eval:
   temperature: 0           # réponse la plus probable : des scores reproductibles
-  max_tokens: 3072
+  max_tokens: 5120         # TestMaker écrit des fichiers longs : 3072 en coupait 7 sur 25 ; prompt + 5120 < 8192
   systems:
-    base:                  # le student AVANT entraînement, même compression (Q8) que TestMaker
-      model: qwen2.5-coder:1.5b-instruct-q8_0
+    base:                  # le student AVANT entraînement : mêmes poids Q8, mêmes réglages Ollama que TestMaker
+      model: testmaker-base  # créé avec ../Modelfile.base (sinon contexte de 4096 tokens au lieu de 8192)
       base_url: http://localhost:11434/v1
       api_key_env: OLLAMA_API_KEY
       concurrency: 1
@@ -94,6 +94,20 @@ eval:
       timeout_s: 1800
     teacher:
       teacher: openrouter
+    # Mêmes modèles servis par vLLM sur un pod RunPod (bf16, GPU) : remplacer POD_ID par l'id du pod.
+    # vLLM sert le modèle de base et l'adaptateur LoRA « testmaker » sur le même serveur.
+    base-gpu:
+      model: Qwen/Qwen2.5-Coder-1.5B-Instruct
+      base_url: https://0r1a8350f0zlrx-8000.proxy.runpod.net/v1
+      api_key_env: VLLM_API_KEY          # même valeur que --api-key au lancement de vLLM
+      concurrency: 8
+      timeout_s: 300
+    testmaker-gpu:
+      model: testmaker
+      base_url: https://0r1a8350f0zlrx-8000.proxy.runpod.net/v1
+      api_key_env: VLLM_API_KEY
+      concurrency: 8
+      timeout_s: 300
 
 # Distillation on-policy optionnelle (étape 6). Le teacher doit partager le tokenizer
 # du student (famille Qwen2.5-Coder) car la perte compare les distributions de logits.
