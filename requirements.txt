@@ -1,0 +1,3 @@
+# Pipeline local (collecte, teacher, sandbox). L'entraînement aura ses propres dépendances sur le GPU loué.
+pyyaml
+openai>=1.40

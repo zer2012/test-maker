@@ -1,0 +1,6 @@
+.venv/
+.sandbox_tmp/
+__pycache__/
+.DS_Store
+data/
+checkpoints/
