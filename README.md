@@ -20,4 +20,4 @@ ollama pull qwen2.5-coder:7b              # teacher local (~4,7 Go)
 .venv/bin/python scripts/build_sft.py                           # 4. jeu SFT              -> data/sft/*.jsonl
 ```
 Chaque script reprend là où il s'est arrêté. `--provider openrouter` (avec `TEACHER_API_KEY`)
-bascule sur Qwen2.5-Coder-32B pour le volume ; le teacher local sert à valider la chaîne.
+bascule sur Qwen3-Coder-30B-A3B pour le volume ; le teacher local sert à valider la chaîne.

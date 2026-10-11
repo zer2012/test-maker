@@ -11,7 +11,7 @@ paths:
 # Modèle professeur : n'importe quel endpoint compatible OpenAI. `provider` choisit le profil ;
 # surcharge possible en ligne de commande avec `--provider`.
 # - ollama : local, gratuit, lent sur CPU (~1-2 min par test) -> pour valider la chaîne.
-# - openrouter : Qwen2.5-Coder-32B, rapide et meilleur -> pour le volume.
+# - openrouter : Qwen3-Coder-30B-A3B, rapide et meilleur -> pour le volume.
 # L'identifiant du modèle dépend du fournisseur ("Qwen/Qwen2.5-Coder-32B-Instruct" sur vLLM).
 teacher:
   provider: ollama
@@ -23,10 +23,17 @@ teacher:
       concurrency: 1                   # un seul modèle sur le CPU : paralléliser ne sert à rien
       timeout_s: 1800                  # une réponse de 2048 tokens peut dépasser 5 min sur CPU
     openrouter:
-      model: qwen/qwen-2.5-coder-32b-instruct
+      # Qwen2.5-Coder-32B n'est servi que par Cloudflare sur OpenRouter, qui renvoie du texte corrompu
+      # (tokens `[]` et retours à la ligne perdus). Qwen3-Coder-30B-A3B : meilleur, ~10x moins cher, Apache 2.0.
+      model: qwen/qwen3-coder-30b-a3b-instruct
       base_url: https://openrouter.ai/api/v1
       api_key_env: TEACHER_API_KEY
       concurrency: 16
+      # Préférences de routage OpenRouter, envoyées telles quelles. Si un fournisseur renvoie du
+      # texte corrompu, les scripts affichent son nom à la fin : l'exclure avec, par exemple,
+      #   extra_body: {provider: {ignore: ["NomDuFournisseur"]}}
+      # ou imposer un ordre : {provider: {order: ["A", "B"], allow_fallbacks: false}}
+      extra_body: {}
   n_candidates: 2          # rejection sampling : on garde le meilleur candidat validé
   temperature: 0.7
   max_tokens: 2048

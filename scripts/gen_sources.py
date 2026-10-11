@@ -17,6 +17,17 @@ from testmaker.llm import teacher_llm
 from testmaker.prompts import DOMAINS, SYNTHETIC_EXTRA, SYNTHETIC_TEMPLATE
 
 
+def _compiles(code: str, lang: str) -> bool:
+    """Contrôle de syntaxe local et gratuit (Python seulement) avant de payer des tests."""
+    if lang != "python":
+        return True
+    try:
+        compile(code, "solution.py", "exec")
+        return True
+    except (SyntaxError, ValueError):
+        return False
+
+
 async def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--lang", default="python", choices=list(LANGUAGES))
@@ -59,7 +70,8 @@ async def main() -> None:
         code = spec.normalize(extract_code(text))
         n_lines = len(code.splitlines())
         # Premier motif de rejet rencontré, ou None si le module est gardé.
-        reason = ("pas autonome" if not spec.self_contained(code)
+        reason = ("ne compile pas" if not _compiles(code, args.lang)
+                  else "pas autonome" if not spec.self_contained(code)
                   else f"{n_lines} lignes" if not lo <= n_lines <= hi
                   else "doublon" if code_hash(code) in seen else None)
         if reason:
@@ -71,6 +83,8 @@ async def main() -> None:
         kept += 1
         print(f"  {rid} gardé ({n_lines} lignes)")
     print(f"{kept} modules ajoutés à {out}")
+    if llm.providers:
+        print(f"Fournisseurs : {dict(llm.providers)}")
 
 
 if __name__ == "__main__":

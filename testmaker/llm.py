@@ -2,6 +2,7 @@
 
 import asyncio
 import os
+from collections import Counter
 
 from openai import AsyncOpenAI
 
@@ -10,8 +11,12 @@ class LLM:
     """Client minimal pour tout endpoint compatible OpenAI (teacher ou student servi localement)."""
 
     def __init__(self, model: str, base_url: str, api_key_env: str, concurrency: int = 8,
-                 timeout: float = 300):
+                 timeout: float = 300, extra_body: dict | None = None):
         self.model = model
+        # Champs ajoutés tels quels à chaque requête, ex. les préférences de routage d'OpenRouter.
+        self.extra_body = extra_body or None
+        # Qui a réellement servi chaque réponse (OpenRouter renvoie le nom du fournisseur).
+        self.providers: Counter = Counter()
         # La clé est lue dans une variable d'environnement (jamais écrite dans la config).
         # Ollama n'en a pas besoin mais le SDK exige une valeur : d'où "sk-no-key".
         # max_retries : le SDK réessaie seul en cas d'erreur réseau, de 429 ou de 5xx.
@@ -25,7 +30,11 @@ class LLM:
         async with self.sem:  # attend qu'une « place » se libère avant d'envoyer
             resp = await self.client.chat.completions.create(
                 model=self.model, messages=messages, temperature=temperature, max_tokens=max_tokens,
+                extra_body=self.extra_body,
             )
+        # `provider` n'est pas un champ OpenAI standard : None chez Ollama.
+        if provider := getattr(resp, "provider", None):
+            self.providers[provider] += 1
         return resp.choices[0].message.content or ""
 
     async def sample(self, messages: list[dict], n: int, temperature: float, max_tokens: int) -> list[str]:
@@ -42,4 +51,5 @@ def teacher_llm(cfg: dict, provider: str | None = None) -> LLM:
     """Construit le client du teacher à partir du profil choisi (config ou option --provider)."""
     t = cfg["teacher"]
     p = t["providers"][provider or t["provider"]]
-    return LLM(p["model"], p["base_url"], p["api_key_env"], p.get("concurrency", 8), p.get("timeout_s", 300))
+    return LLM(p["model"], p["base_url"], p["api_key_env"], p.get("concurrency", 8), p.get("timeout_s", 300),
+               p.get("extra_body"))

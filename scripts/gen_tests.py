@@ -47,6 +47,8 @@ async def main() -> None:
         append_jsonl(out, {"id": rec["id"], "lang": rec["lang"], "code": rec["code"],
                            "teacher": llm.model, "candidates": tests})
         print(f"  [{k}/{len(todo)}] {rec['id']} : {len(tests)} candidats")
+    if llm.providers:
+        print(f"Fournisseurs : {dict(llm.providers)}")
 
 
 if __name__ == "__main__":
