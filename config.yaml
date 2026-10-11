@@ -73,6 +73,28 @@ sft:
   lora_dropout: 0.05
   qlora: false             # true = modèle chargé en 4 bits (GPU < 16 Go) ; plus lent, à peine moins bon
 
+# Évaluation (scripts/evaluate.py) : chaque « système » écrit des tests pour les modules du split test.
+# Même format de profil que les teachers ; `teacher: <profil>` réutilise un profil de teacher.providers.
+# Pour générer sur un GPU RunPod (vLLM), remplacer base_url par l'URL du pod (voir evaluate.py).
+eval:
+  temperature: 0           # réponse la plus probable : des scores reproductibles
+  max_tokens: 3072
+  systems:
+    base:                  # le student AVANT entraînement, même compression (Q8) que TestMaker
+      model: qwen2.5-coder:1.5b-instruct-q8_0
+      base_url: http://localhost:11434/v1
+      api_key_env: OLLAMA_API_KEY
+      concurrency: 1
+      timeout_s: 1800
+    testmaker:
+      model: testmaker
+      base_url: http://localhost:11434/v1
+      api_key_env: OLLAMA_API_KEY
+      concurrency: 1
+      timeout_s: 1800
+    teacher:
+      teacher: openrouter
+
 # Distillation on-policy optionnelle (étape 6). Le teacher doit partager le tokenizer
 # du student (famille Qwen2.5-Coder) car la perte compare les distributions de logits.
 gkd:

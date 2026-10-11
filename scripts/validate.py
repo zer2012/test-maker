@@ -13,9 +13,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from testmaker.common import append_jsonl, load_config, read_jsonl
+from testmaker.check import check_test
 from testmaker.mutate import mutants
-from testmaker.prune import prune
-from testmaker.sandbox import run_tests
 
 
 def validate(rec: dict, cfg: dict) -> dict:
@@ -24,16 +23,9 @@ def validate(rec: dict, cfg: dict) -> dict:
     muts = mutants(code, lang, cfg["sandbox"]["n_mutants"], seed=rec["id"])
     results, tests = [], []      # tests[i] = version finale du candidat i (élaguée ou non)
     for test in rec["candidates"]:
-        r = run_tests(lang, code, test, muts, cfg)
-        pruned_count = 0
-        if r.source_ok and not r.passed:
-            pruned = prune(lang, test, r.log, cfg["filter"]["max_pruned_ratio"])
-            if pruned:
-                r2 = run_tests(lang, code, pruned[0], muts, cfg)
-                if r2.passed:  # l'élagage n'est retenu que si le reste passe vraiment
-                    r, test, pruned_count = r2, pruned[0], pruned[1]
-        results.append(r.to_dict() | {"pruned": pruned_count})
-        tests.append(test)
+        result, final = check_test(lang, code, test, muts, cfg)   # exécution + élagage éventuel
+        results.append(result)
+        tests.append(final)
     passing = [i for i, r in enumerate(results) if r["passed"]]
     # Meilleur = plus haut score de mutation ; à égalité, le test le plus court. None si aucun ne passe.
     best = max(passing, key=lambda i: (results[i]["mutation_score"] or 0, -len(tests[i])), default=None)

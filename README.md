@@ -42,3 +42,11 @@ python train/train_lora.py      # -> checkpoints/testmaker-1.5b/adapter
 python train/merge.py           # -> checkpoints/testmaker-1.5b/merged + Modelfile
 ```
 Le modèle fusionné s'installe ensuite dans Ollama sous le nom `testmaker`.
+
+## Évaluation
+Le modèle de base, TestMaker et le teacher écrivent des tests pour les modules du split test, jugés
+comme à la validation (sandbox, mutants, élagage). Systèmes définis dans `config.yaml` (`eval:`).
+```sh
+.venv/bin/python scripts/try_model.py 3                  # un module, un modèle, résultat détaillé
+.venv/bin/python scripts/evaluate.py                     # comparaison complète -> data/eval/v1/report.md
+```
