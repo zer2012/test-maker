@@ -34,3 +34,11 @@ ollama pull qwen2.5-coder:7b              # teacher local (~4,7 Go)
 ```
 Chaque script reprend là où il s'est arrêté. `--provider openrouter` (avec `TEACHER_API_KEY`)
 bascule sur Qwen3-Coder-30B-A3B pour le volume ; le teacher local sert à valider la chaîne.
+
+## Entraînement
+LoRA sur GPU loué à partir de `data/sft/` (dépendances : `train/requirements.txt`) :
+```sh
+python train/train_lora.py      # -> checkpoints/testmaker-1.5b/adapter
+python train/merge.py           # -> checkpoints/testmaker-1.5b/merged + Modelfile
+```
+Le modèle fusionné s'installe ensuite dans Ollama sous le nom `testmaker`.

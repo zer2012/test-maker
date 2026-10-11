@@ -60,15 +60,18 @@ filter:
   min_mutation_score: 0.34 # au moins 1 mutant sur 3 doit être détecté par les tests
   max_pruned_ratio: 0.3    # élagage : on retire au plus 30% des fonctions de test qui échouent
 
+# Entraînement LoRA (train/train_lora.py, sur GPU loué). Batch effectif = batch_size x grad_accum = 16.
 sft:
   epochs: 2
   lr: 2.0e-4
-  batch_size: 4
-  grad_accum: 4
-  max_length: 4096
+  warmup: 0.05             # part des pas en montée progressive du learning rate
+  batch_size: 2            # 2 x 4096 tokens : les logits (vocabulaire de 152k) tiennent sur 24 Go
+  grad_accum: 8
+  max_length: 4096         # les exemples plus longs sont écartés (pas tronqués : un test coupé apprend mal)
   lora_r: 64
   lora_alpha: 128
-  full_finetune: false
+  lora_dropout: 0.05
+  qlora: false             # true = modèle chargé en 4 bits (GPU < 16 Go) ; plus lent, à peine moins bon
 
 # Distillation on-policy optionnelle (étape 6). Le teacher doit partager le tokenizer
 # du student (famille Qwen2.5-Coder) car la perte compare les distributions de logits.

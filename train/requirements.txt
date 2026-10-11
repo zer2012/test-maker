@@ -1,0 +1,8 @@
+# Dépendances d'entraînement (pod GPU). torch est déjà installé par le template « RunPod PyTorch ».
+transformers==5.19.0
+trl==1.15.0
+peft==0.21.2
+datasets>=4.7
+accelerate>=1.4
+bitsandbytes            # seulement pour qlora: true
+pyyaml
