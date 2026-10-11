@@ -36,7 +36,7 @@ teacher:
       extra_body: {}
   n_candidates: 2          # rejection sampling : on garde le meilleur candidat validé
   temperature: 0.7
-  max_tokens: 2048
+  max_tokens: 3072         # réponses tronquées = code inutilisable ; les modules Qwen3 font jusqu'à +-180 lignes
 
 student:
   base_model: Qwen/Qwen2.5-Coder-1.5B-Instruct
@@ -57,6 +57,7 @@ sandbox:
 
 filter:
   min_mutation_score: 0.34 # au moins 1 mutant sur 3 doit être détecté par les tests
+  max_pruned_ratio: 0.3    # élagage : on retire au plus 30% des fonctions de test qui échouent
 
 sft:
   epochs: 2

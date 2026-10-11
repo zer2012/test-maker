@@ -35,7 +35,8 @@ def main() -> None:
             # Format conversationnel prompt/completion de TRL : la perte ne porte que sur la completion.
             "prompt": build_messages(rec["lang"], rec["code"]),
             "completion": [{"role": "assistant",
-                            "content": format_completion(rec["lang"], rec["candidates"][rec["best"]])}],
+                            # `tests` contient la version élaguée si elle existe (absent des anciens fichiers).
+                            "content": format_completion(rec["lang"], rec.get("tests", rec["candidates"])[rec["best"]])}],
         })
     for name, rows in splits.items():
         write_jsonl(Path(cfg["paths"]["sft_dir"]) / f"{name}.jsonl", rows)

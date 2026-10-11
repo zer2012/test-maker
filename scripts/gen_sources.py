@@ -5,6 +5,7 @@ Reprend là où il s'est arrêté : les variations déjà tentées sont sautées
 """
 
 import argparse
+import ast
 import asyncio
 import sys
 from pathlib import Path
@@ -17,15 +18,29 @@ from testmaker.llm import teacher_llm
 from testmaker.prompts import DOMAINS, SYNTHETIC_EXTRA, SYNTHETIC_TEMPLATE
 
 
-def _compiles(code: str, lang: str) -> bool:
-    """Contrôle de syntaxe local et gratuit (Python seulement) avant de payer des tests."""
+def _python_issue(code: str, lang: str) -> str | None:
+    """Contrôles locaux et gratuits (Python seulement) avant de payer des tests.
+
+    Rejette le code qui ne compile pas, et celui qui exécute des appels au moment de l'import
+    (ex. une démo `demo()` en fin de fichier) : ils tournent avant les tests et peuvent les casser.
+    """
     if lang != "python":
-        return True
+        return None
     try:
-        compile(code, "solution.py", "exec")
-        return True
+        tree = ast.parse(code)
     except (SyntaxError, ValueError):
-        return False
+        return "ne compile pas"
+    for node in tree.body:
+        if isinstance(node, ast.If):
+            # Seul `if __name__ == "__main__":` est sûr : il ne s'exécute pas quand les tests importent le module.
+            if ast.unparse(node.test).replace("'", '"') == '__name__ == "__main__"':
+                continue
+            calls = [n for n in ast.walk(node) if isinstance(n, ast.Expr) and isinstance(n.value, ast.Call)]
+        else:
+            calls = [node] if isinstance(node, ast.Expr) and isinstance(node.value, ast.Call) else []
+        if calls:
+            return "code exécuté à l'import"
+    return None
 
 
 async def main() -> None:
@@ -70,10 +85,10 @@ async def main() -> None:
         code = spec.normalize(extract_code(text))
         n_lines = len(code.splitlines())
         # Premier motif de rejet rencontré, ou None si le module est gardé.
-        reason = ("ne compile pas" if not _compiles(code, args.lang)
-                  else "pas autonome" if not spec.self_contained(code)
-                  else f"{n_lines} lignes" if not lo <= n_lines <= hi
-                  else "doublon" if code_hash(code) in seen else None)
+        reason = _python_issue(code, args.lang) or (
+            "pas autonome" if not spec.self_contained(code)
+            else f"{n_lines} lignes" if not lo <= n_lines <= hi
+            else "doublon" if code_hash(code) in seen else None)
         if reason:
             append_jsonl(out + ".rejected", {"id": rid, "reason": reason, "raw": text})
             print(f"  {rid} rejeté ({reason})")

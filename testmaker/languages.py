@@ -59,7 +59,8 @@ PYTHON = Language(
     name="python", display="Python", exts=(".py",), fence="python", framework="pytest",
     image="testmaker-python",
     build_cmd="python -m py_compile {code_file}",
-    test_cmd="python -m pytest -q -x -p no:cacheprovider test_solution.py",
+    # Sans -x : tous les tests tournent, pour que l'élagage (prune.py) connaisse tous ceux qui échouent.
+    test_cmd="python -m pytest -q -p no:cacheprovider test_solution.py",
     code_file=lambda code: "solution.py",
     files=lambda code, test: {"solution.py": code, "test_solution.py": test},
     hint=lambda code: "The code lives in `solution.py`; import from it with `from solution import ...`. "

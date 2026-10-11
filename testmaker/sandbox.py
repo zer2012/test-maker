@@ -100,9 +100,10 @@ def run_tests(lang: str, code: str, test: str, mutant_codes: list[str], cfg: dic
 
         # {"orig": "0", "m0": "1", "m1": "BUILD_FAIL", ...}
         results = dict(re.findall(r"^RESULT (\S+) (\S+)$", stdout, re.M))
-        # On conserve la fin du log de l'original (tests, ou compilation si elle a échoué) pour le debug.
+        # On conserve la fin du log de l'original (tests, ou compilation si elle a échoué) : pour le debug,
+        # et pour l'élagage qui y lit le résumé `FAILED ...` de pytest.
         log_file = Path(tmp, "orig.log" if results.get("orig") != BUILD_FAIL else "orig.build.log")
-        log = log_file.read_text(errors="replace")[-2000:] if log_file.exists() else stdout[-2000:]
+        log = log_file.read_text(errors="replace")[-4000:] if log_file.exists() else stdout[-4000:]
 
     orig = results.get("orig")
     # Codes de sortie des mutants qui ont compilé ; un code non nul = au moins un test a échoué = mutant tué.
